@@ -8,12 +8,13 @@ const styles = StyleSheet.create({
         justifyContent: "center",
         alignItems: "center",
     },
-    containerBody: {
-        backgroundColor: '#969696ff',
-        height: '90%',
-        width: '80%',
-        borderRadius: 32
-    },
+containerBody: {
+    backgroundColor: '#969696ff',
+    flex: 1,
+    borderRadius: 32,
+    marginHorizontal: 20, 
+    marginVertical: 40, 
+},
     logoDisplay: {
         flexDirection: 'row',
         justifyContent:'center',
@@ -50,19 +51,16 @@ const styles = StyleSheet.create({
         marginBottom: 10,
         borderRadius: 12
     },
-    julio: {
-        color:'white',
-        fontSize: 16,
-        display: 'flex',
-        justifyContent:'center',
-        alignItems:'center',
-        backgroundColor: '#a01010ff',
-        height: '90%',
-        width: '50%',
-        margin:'auto',
-        padding: 10,
-        borderRadius: 16
-    },
-})
+julio: {
+    backgroundColor: '#a01010ff',
+    height: 40, // <<< Altura fixa para o botão, ajuste se necessário
+    width: '50%',
+    padding: 10, 
+    borderRadius: 16,
+    alignItems: 'center', 
+    justifyContent: 'center',
+    marginLeft: 80
+},
+ })
 
 export default styles
