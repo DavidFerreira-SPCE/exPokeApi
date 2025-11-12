@@ -1,9 +1,21 @@
 import axios from 'axios';
 import { Image } from 'expo-image';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import {
+  ActivityIndicator,
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
+} from "react-native";
 import { SafeAreaView } from 'react-native-safe-area-context';
+
 import Styles from './styles';
+
+// --- INTERFACES DO TYPESCRIPT ---
 
 interface PokemonTypeSlot {
   type: {
@@ -17,17 +29,18 @@ interface PokemonData {
   sprites: {
     front_default: string;
   };
-  types: PokemonTypeSlot[]; // Um array de slots de tipo
+  types: PokemonTypeSlot[];
   height: number;
   weight: number;
 }
 
 interface PokemonCardProps {
-  pokemon: PokemonData | null;
+  pokemon: PokemonData;
 }
-const PokemonCard = ({ pokemon }: PokemonCardProps) => {
-  if (!pokemon) return null;
 
+
+// --- COMPONENTE DO CARTÃO ---
+const PokemonCard = ({ pokemon }: PokemonCardProps) => {
   const typesList = pokemon.types.map(t => t.type.name).join(', ');
   const heightInMeters = (pokemon.height / 10).toFixed(1);
   const weightInKg = (pokemon.weight / 10).toFixed(1);
@@ -37,14 +50,11 @@ const PokemonCard = ({ pokemon }: PokemonCardProps) => {
       <Text style={cardStyles.nameText}>
         #{pokemon.id} - {pokemon.name.toUpperCase()}
       </Text>
-
       <Image
-        // A URL para o sprite frontal
         source={{ uri: pokemon.sprites.front_default }}
         style={cardStyles.image}
         contentFit="contain"
       />
-
       <View style={cardStyles.dataRow}>
         <Text style={cardStyles.label}>Tipo(s):</Text>
         <Text style={cardStyles.value}>{typesList}</Text>
@@ -61,7 +71,7 @@ const PokemonCard = ({ pokemon }: PokemonCardProps) => {
   );
 };
 
- // Estilos específicos para o cartão de resultado
+// Estilos específicos para o cartão de resultado
 const cardStyles = StyleSheet.create({
   container: {
     backgroundColor: '#f9f9f9',
@@ -110,11 +120,41 @@ const cardStyles = StyleSheet.create({
 // --- COMPONENTE PRINCIPAL ---
 export default function SearchPokemon() {
   const [userInput, setUserInput] = useState('');
-  const [pokemonData, setPokemonData] = useState<PokemonData | null>(null);
-  const [initialPokemons, setInitialPokemons] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [searchedPokemon, setSearchedPokemon] = useState<PokemonData | null>(null);
+  const [displayedPokemons, setDisplayedPokemons] = useState<PokemonData[]>([]);
+  const [loadingList, setLoadingList] = useState(false);
+  const [loadingSearch, setLoadingSearch] = useState(false);
   const [error, setError] = useState('');
 
+  const POKEMON_PER_PAGE = 5;
+
+  const loadMorePokemons = async () => {
+    setLoadingList(true);
+    setError('');
+    setSearchedPokemon(null); 
+
+    const offset = displayedPokemons.length;
+
+    try {
+      const listResponse = await axios.get(
+        `https://pokeapi.co/api/v2/pokemon?limit=${POKEMON_PER_PAGE}&offset=${offset}`
+      );
+      
+      const results = listResponse.data.results;
+
+      const detailPromises = results.map((p: { url: string }) => axios.get(p.url));
+      const detailResponses = await Promise.all(detailPromises);
+      const newPokemonsData = detailResponses.map(res => res.data);
+
+      setDisplayedPokemons(prevList => [...prevList, ...newPokemonsData]);
+
+    } catch (err) {
+      console.error("Erro ao carregar lista", err);
+      setError("Não foi possível carregar a lista de Pokémon.");
+    } finally {
+      setLoadingList(false);
+    }
+  };
 
   const searchPokemon = async () => {
     if (!userInput.trim()) {
@@ -122,52 +162,49 @@ export default function SearchPokemon() {
       return;
     }
 
-    setLoading(true);
+    setLoadingSearch(true);
     setError('');
-    setPokemonData(null);
+    setSearchedPokemon(null); 
 
     const searchIDOrName = userInput.trim().toLowerCase();
 
     try {
-      // Busca o Pokémon específico
       const response = await axios.get(`https://pokeapi.co/api/v2/pokemon/${searchIDOrName}`);
-      setPokemonData(response.data);
+      setSearchedPokemon(response.data); 
 
     } catch (err) {
-      console.error("Erro ao buscar Pokémon");
-      setError(`Pokémon "${userInput}" não encontrado. Tente novamente.`);
-      setPokemonData(null);
+      console.error("Erro ao buscar Pokémon", err);
+      setError(`Pokémon "${userInput}" não encontrado.`);
+      setSearchedPokemon(null);
     } finally {
-      setLoading(false);
+      setLoadingSearch(false);
     }
   };
 
   useEffect(() => {
-    const loadInitialPokemons = async () => {
-      setLoading(true);
-      try {
-        const response = await axios.get('https://pokeapi.co/api/v2/pokemon?limit=10');
-        setInitialPokemons(response.data.results);
-      } catch (err) {
-        console.error("Erro ao carregar lista inicial:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadInitialPokemons();
+    loadMorePokemons();
   }, []);
 
- 
+  useEffect(() => {
+    if (!userInput.trim()) {
+      setSearchedPokemon(null);
+      setError(''); 
+    }
+  }, [userInput]);
+
+  
   return (
     <SafeAreaView style={Styles.body}>
-      <ScrollView contentContainerStyle={
-        {
+      <ScrollView
+        contentContainerStyle={{
           paddingHorizontal: 20,
           paddingVertical: 10,
           flexGrow: 1
-        }
-      } style={Styles.containerBody}>
+        }}
+        style={Styles.containerBody}
+      >
         <View>
+          {/* --- LOGOS E TÍTULO --- */}
           <View style={Styles.logoDisplay}>
             <Image
               source={require("../assets/images/pokeapi.png")}
@@ -182,34 +219,65 @@ export default function SearchPokemon() {
             Welcome to PokeApi Unofficial Searching App
           </Text>
 
+          {/* --- BARRA DE BUSCA E BOTÃO --- */}
           <TextInput
             style={Styles.textoBusca}
-            placeholder='Digite o nome/número do Pokemon que deseja encontrar'
+            placeholder='Digite o nome/número do Pokemon'
             placeholderTextColor={'#e7e7e7ff'}
             value={userInput}
             onChangeText={setUserInput}
             onSubmitEditing={searchPokemon}
           />
-
           <View>
             <TouchableOpacity
               style={Styles.julio}
-              onPress={searchPokemon}>
-              <Text style={{ color: 'white', fontSize: 16, fontWeight: 'bold' }}>Pesquisar</Text>
+              onPress={searchPokemon}
+              disabled={loadingSearch}
+            >
+              <Text style={{ color: 'white', fontSize: 16, fontWeight: 'bold' }}>
+                {loadingSearch ? "Buscando..." : "Pesquisar"}
+              </Text>
             </TouchableOpacity>
           </View>
 
-          {loading && <ActivityIndicator size="large" color="#a01010ff" style={{ marginVertical: 20 }} />}
-
+          {/* Mostra erro, se houver */}
           {error ? (
-            <Text style={[Styles.texto, { backgroundColor: '#FFD700', color: 'red' }]}>
+            <Text style={[Styles.texto, { backgroundColor: '#FFD700', color: 'red', marginVertical: 10, padding: 10, borderRadius: 5 }]}>
               {error}
             </Text>
           ) : null}
 
-          {/* --- EXIBIÇÃO DO POKÉMON ENCONTRADO --- */}
-          {pokemonData && (
-            <PokemonCard pokemon={pokemonData} />
+
+          {/* --- ÁREA DE RESULTADO (LÓGICA CONDICIONAL) --- */}
+          
+          {/* Se TIVER um Pokémon pesquisado, mostre SÓ ele: */}
+          {searchedPokemon ? (
+            <PokemonCard pokemon={searchedPokemon} />
+          ) : (
+            
+            /* Senão, mostre a LISTA: */
+            <>
+              {displayedPokemons.map(pokemon => (
+                <PokemonCard key={pokemon.id} pokemon={pokemon} />
+              ))}
+              
+              {/* Indicador de loading da LISTA */}
+              {loadingList && <ActivityIndicator size="large" color="#a01010ff" style={{ marginVertical: 20 }} />}
+              
+              {/* Botão "Ver mais" (só aparece se não estiver carregando) */}
+              {!loadingList && (
+                <View>
+                  <TouchableOpacity
+                    style={Styles.julio}
+                    onPress={loadMorePokemons}
+                  >
+                    <Text style={{ color: 'white', fontSize: 16, fontWeight: 'bold' }}>
+                      Ver mais
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </>
           )}
 
         </View>
