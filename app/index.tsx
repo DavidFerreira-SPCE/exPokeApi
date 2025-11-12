@@ -5,14 +5,30 @@ import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TextInput, Touc
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Styles from './styles';
 
-// --- COMPONENTE FILHO: EXIBIÇÃO DE DETALHES DO POKÉMON ---
-const PokemonCard = ({ pokemon }) => {
+interface PokemonTypeSlot {
+  type: {
+    name: string;
+  };
+}
+
+interface PokemonData {
+  id: number;
+  name: string;
+  sprites: {
+    front_default: string;
+  };
+  types: PokemonTypeSlot[]; // Um array de slots de tipo
+  height: number;
+  weight: number;
+}
+
+interface PokemonCardProps {
+  pokemon: PokemonData | null;
+}
+const PokemonCard = ({ pokemon }: PokemonCardProps) => {
   if (!pokemon) return null;
 
-  // Extrai os tipos, formatando em uma string (ex: "grass, poison")
   const typesList = pokemon.types.map(t => t.type.name).join(', ');
-  // Altura (height) e Peso (weight) na PokeAPI vêm em decímetros e hectogramas. 
-  // Dividimos por 10 para obter metros e quilogramas, respectivamente.
   const heightInMeters = (pokemon.height / 10).toFixed(1);
   const weightInKg = (pokemon.weight / 10).toFixed(1);
 
@@ -45,122 +61,7 @@ const PokemonCard = ({ pokemon }) => {
   );
 };
 
-
-// --- COMPONENTE PRINCIPAL ---
-export default function SearchPokemon() {
-  const [userInput, setUserInput] = useState('');
-  const [pokemonData, setPokemonData] = useState(null);
-  const [initialPokemons, setInitialPokemons] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-
-
-  const searchPokemon = async () => {
-    if (!userInput.trim()) {
-      Alert.alert("Atenção", "Por favor, digite o nome ou número do Pokémon.");
-      return;
-    }
-
-    setLoading(true);
-    setError('');
-    setPokemonData(null);
-
-    const searchIDOrName = userInput.trim().toLowerCase();
-
-    try {
-      // Busca o Pokémon específico
-      const response = await axios.get(`https://pokeapi.co/api/v2/pokemon/${searchIDOrName}`);
-      setPokemonData(response.data);
-
-    } catch (err) {
-      console.error("Erro ao buscar Pokémon");
-      setError(`Pokémon "${userInput}" não encontrado. Tente novamente.`);
-      setPokemonData(null);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // useEffect para carregar a lista inicial de Pokémon (CORRIGIDO)
-  useEffect(() => {
-    const loadInitialPokemons = async () => {
-      setLoading(true);
-      try {
-        const response = await axios.get('https://pokeapi.co/api/v2/pokemon?limit=10');
-        setInitialPokemons(response.data.results);
-      } catch (err) {
-        console.error("Erro ao carregar lista inicial:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadInitialPokemons();
-  }, []);
-
-
-  return (
-    <SafeAreaView style={Styles.body}>
-      <ScrollView contentContainerStyle={
-        {
-          // width: '100%', // Já coberto pelo flex: 1 no containerBody, pode ser redundante
-          paddingHorizontal: 20,
-          paddingVertical: 10,
-          flexGrow: 1 // <<< Garante que o conteúdo pode rolar mesmo se não preencher
-        }
-      } style={Styles.containerBody}>
-        <View>
-          <View style={Styles.logoDisplay}>
-            <Image
-              source={require("../assets/images/pokeapi.png")}
-              style={Styles.logo}
-            />
-            <Image
-              source={require("../assets/images/pokebola.png")}
-              style={Styles.logo}
-            />
-          </View>
-          <Text style={Styles.texto}>
-            Welcome to PokeApi Unofficial Searching App
-          </Text>
-
-          <TextInput
-            style={Styles.textoBusca}
-            placeholder='Digite o nome/número do Pokemon que deseja encontrar'
-            placeholderTextColor={'#e7e7e7ff'}
-            value={userInput}
-            onChangeText={setUserInput}
-            onSubmitEditing={searchPokemon}
-          />
-
-          <View>
-            <TouchableOpacity
-              style={Styles.julio}
-              onPress={searchPokemon}>
-              <Text style={{ color: 'white', fontSize: 16, fontWeight: 'bold' }}>Pesquisar</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* --- FEEDBACK PARA O USUÁRIO --- */}
-          {loading && <ActivityIndicator size="large" color="#a01010ff" style={{ marginVertical: 20 }} />}
-
-          {error ? (
-            <Text style={[Styles.texto, { backgroundColor: '#FFD700', color: 'red' }]}>
-              {error}
-            </Text>
-          ) : null}
-
-          {/* --- EXIBIÇÃO DO POKÉMON ENCONTRADO --- */}
-          {pokemonData && (
-            <PokemonCard pokemon={pokemonData} />
-          )}
-
-        </View>
-      </ScrollView>
-    </SafeAreaView>
-  );
-};
-
-// Estilos específicos para o cartão de resultado
+ // Estilos específicos para o cartão de resultado
 const cardStyles = StyleSheet.create({
   container: {
     backgroundColor: '#f9f9f9',
@@ -204,3 +105,115 @@ const cardStyles = StyleSheet.create({
     color: '#000',
   },
 });
+
+
+// --- COMPONENTE PRINCIPAL ---
+export default function SearchPokemon() {
+  const [userInput, setUserInput] = useState('');
+  const [pokemonData, setPokemonData] = useState<PokemonData | null>(null);
+  const [initialPokemons, setInitialPokemons] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+
+  const searchPokemon = async () => {
+    if (!userInput.trim()) {
+      Alert.alert("Atenção", "Por favor, digite o nome ou número do Pokémon.");
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+    setPokemonData(null);
+
+    const searchIDOrName = userInput.trim().toLowerCase();
+
+    try {
+      // Busca o Pokémon específico
+      const response = await axios.get(`https://pokeapi.co/api/v2/pokemon/${searchIDOrName}`);
+      setPokemonData(response.data);
+
+    } catch (err) {
+      console.error("Erro ao buscar Pokémon");
+      setError(`Pokémon "${userInput}" não encontrado. Tente novamente.`);
+      setPokemonData(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const loadInitialPokemons = async () => {
+      setLoading(true);
+      try {
+        const response = await axios.get('https://pokeapi.co/api/v2/pokemon?limit=10');
+        setInitialPokemons(response.data.results);
+      } catch (err) {
+        console.error("Erro ao carregar lista inicial:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadInitialPokemons();
+  }, []);
+
+ 
+  return (
+    <SafeAreaView style={Styles.body}>
+      <ScrollView contentContainerStyle={
+        {
+          paddingHorizontal: 20,
+          paddingVertical: 10,
+          flexGrow: 1
+        }
+      } style={Styles.containerBody}>
+        <View>
+          <View style={Styles.logoDisplay}>
+            <Image
+              source={require("../assets/images/pokeapi.png")}
+              style={Styles.logo}
+            />
+            <Image
+              source={require("../assets/images/pokebola.png")}
+              style={Styles.logo}
+            />
+          </View>
+          <Text style={Styles.texto}>
+            Welcome to PokeApi Unofficial Searching App
+          </Text>
+
+          <TextInput
+            style={Styles.textoBusca}
+            placeholder='Digite o nome/número do Pokemon que deseja encontrar'
+            placeholderTextColor={'#e7e7e7ff'}
+            value={userInput}
+            onChangeText={setUserInput}
+            onSubmitEditing={searchPokemon}
+          />
+
+          <View>
+            <TouchableOpacity
+              style={Styles.julio}
+              onPress={searchPokemon}>
+              <Text style={{ color: 'white', fontSize: 16, fontWeight: 'bold' }}>Pesquisar</Text>
+            </TouchableOpacity>
+          </View>
+
+          {loading && <ActivityIndicator size="large" color="#a01010ff" style={{ marginVertical: 20 }} />}
+
+          {error ? (
+            <Text style={[Styles.texto, { backgroundColor: '#FFD700', color: 'red' }]}>
+              {error}
+            </Text>
+          ) : null}
+
+          {/* --- EXIBIÇÃO DO POKÉMON ENCONTRADO --- */}
+          {pokemonData && (
+            <PokemonCard pokemon={pokemonData} />
+          )}
+
+        </View>
+      </ScrollView>
+    </SafeAreaView>
+  );
+};
