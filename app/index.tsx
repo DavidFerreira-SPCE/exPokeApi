@@ -246,9 +246,6 @@ export default function SearchPokemon() {
               {error}
             </Text>
           ) : null}
-
-
-          {/* --- ÁREA DE RESULTADO (LÓGICA CONDICIONAL) --- */}
           
           {/* Se TIVER um Pokémon pesquisado, mostre SÓ ele: */}
           {searchedPokemon ? (
